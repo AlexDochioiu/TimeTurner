@@ -1,27 +1,125 @@
-apply plugin: 'kotlin'
 apply plugin: 'java-library'
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.jfrog.bintray'
+
+def annotatorLibraryVersion = "1.0.2"
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.android.support:appcompat-v7:28.0.0'
-    implementation "org.jetbrains.kotlin:kotlin-reflect"
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-
     compile "android.arch.lifecycle:common:1.1.1"
+    //compile "android.arch.lifecycle:common-java8:1.1.1" eventually switch to this and use DefaultLifecycleObserver
 }
 
-sourceCompatibility = "8"
-targetCompatibility = "8"
-repositories {
-    mavenCentral()
+ext {
+    bintrayRepo = 'TimeTurner' // your repo name
+    bintrayName = 'timeturner' // has to be same as your library module name
+    publishedGroupId = 'com.github.alexdochioiu' // your module package name
+    libraryName = 'timeturner'
+    artifact = 'timeturner' // has to be same as your library module name
+    libraryDescription = 'Annotation processor for saving viewmodel states'
+    siteUrl = 'https://github.com/AlexDochioiu/TimeTurner'
+    issuesUrl = 'https://github.com/AlexDochioiu/TimeTurner/issues'
+    gitUrl = 'https://github.com/AlexDochioiu/TimeTurner.git'
+    libLabels = ['Android', 'JeeFo', 'AlexDochioiu', "State", "Saver", "Annotation", "Processor", "Injection", "TimeTurner"]
+    libraryVersion = annotatorLibraryVersion
+    developerId = 'jeefo'
+    developerName = 'AlexDochioiu'
+    developerEmail = 'dochioiu.alex@gmail.com'
+    licenseName = 'The Apache Software License, Version 2.0'
+    licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+    allLicenses = ["Apache-2.0"]
 }
-compileKotlin {
-    kotlinOptions {
-        jvmTarget = "1.8"
+
+group = publishedGroupId   // Maven Group ID for the artifact
+
+install {
+    repositories.mavenInstaller {
+        // This generates POM.xml with proper parameters
+        pom {
+            project {
+                packaging 'aar'
+                groupId publishedGroupId
+                artifactId artifact
+
+                // Add your description here
+                name libraryName
+                description libraryDescription
+                url siteUrl
+
+                // Set your license
+                licenses {
+                    license {
+                        name licenseName
+                        url licenseUrl
+                    }
+                }
+                developers {
+                    developer {
+                        id developerId
+                        name developerName
+                        email developerEmail
+                    }
+                }
+                scm {
+                    connection gitUrl
+                    developerConnection gitUrl
+                    url siteUrl
+
+                }
+            }
+        }
     }
 }
-compileTestKotlin {
-    kotlinOptions {
-        jvmTarget = "1.8"
+
+version = annotatorLibraryVersion
+
+task sourcesJarAnnotation(type: Jar) {
+    from sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+
+task javadocAnnotation(type: Javadoc) {
+    source = sourceSets.main.java.srcDirs
+    classpath = sourceSets.main.runtimeClasspath
+    //classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+
+task javadocJarAnnotation(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+artifacts {
+    archives javadocJarAnnotation
+    archives sourcesJarAnnotation
+}
+
+// Bintray
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+bintray {
+    user = properties.getProperty("bintray.user")
+    key = properties.getProperty("bintray.apikey")
+
+    configurations = ['archives']
+    pkg {
+        repo = bintrayRepo
+        name = bintrayName
+        desc = libraryDescription
+        websiteUrl = siteUrl
+        vcsUrl = gitUrl
+        labels = libLabels
+        issueTrackerUrl = issuesUrl
+        licenses = allLicenses
+        publish = true
+        publicDownloadNumbers = true
+        version {
+            desc = libraryDescription
+            gpg {
+                sign = true //Determines whether to GPG sign the files. The default is false
+                passphrase = properties.getProperty("bintray.gpg.password")
+                //Optional. The passphrase for GPG signing'
+            }
+        }
     }
 }
