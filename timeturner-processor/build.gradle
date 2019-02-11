@@ -1,23 +1,154 @@
-apply plugin: 'kotlin'
+import org.gradle.internal.jvm.Jvm
+
 apply plugin: 'java-library'
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.jfrog.bintray'
+apply plugin: 'jacoco'
+
+def processorLibraryVersion = "1.0.2"
+
+repositories {
+    jcenter()
+    mavenLocal()
+}
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    api 'com.squareup:javapoet:1.11.1'
+    implementation project(':timeturner')
+
+    testCompile files(Jvm.current().getToolsJar())
+    testImplementation 'com.google.guava:guava:24.1-jre'
+    testImplementation 'com.google.truth:truth:0.30'
+    testImplementation 'com.google.testing.compile:compile-testing:0.10'
 }
 
-sourceCompatibility = "8"
-targetCompatibility = "8"
-repositories {
-    mavenCentral()
+ext {
+    bintrayRepo = 'TimeTurner' // your repo name
+    bintrayName = 'timeturner-processor' // has to be same as your library module name
+    publishedGroupId = 'com.github.alexdochioiu' // your module package name
+    libraryName = 'timeturner-processor'
+    artifact = 'timeturner-processor' // has to be same as your library module name
+    libraryDescription = 'Annotation processor for saving viewmodel states'
+    siteUrl = 'https://github.com/AlexDochioiu/TimeTurner'
+    issuesUrl = 'https://github.com/AlexDochioiu/TimeTurner/issues'
+    gitUrl = 'https://github.com/AlexDochioiu/TimeTurner.git'
+    libLabels = ['Android', 'JeeFo', 'AlexDochioiu', "State", "Saver", "Annotation", "Processor", "Injection", "TimeTurner"]
+    libraryVersion = processorLibraryVersion
+    developerId = 'jeefo'
+    developerName = 'AlexDochioiu'
+    developerEmail = 'dochioiu.alex@gmail.com'
+    licenseName = 'The Apache Software License, Version 2.0'
+    licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+    allLicenses = ["Apache-2.0"]
 }
-compileKotlin {
-    kotlinOptions {
-        jvmTarget = "1.8"
+
+group = publishedGroupId   // Maven Group ID for the artifact
+
+install {
+    repositories.mavenInstaller {
+        // This generates POM.xml with proper parameters
+        pom {
+            project {
+                packaging 'aar'
+                groupId publishedGroupId
+                artifactId artifact
+
+                // Add your description here
+                name libraryName
+                description libraryDescription
+                url siteUrl
+
+                // Set your license
+                licenses {
+                    license {
+                        name licenseName
+                        url licenseUrl
+                    }
+                }
+                developers {
+                    developer {
+                        id developerId
+                        name developerName
+                        email developerEmail
+                    }
+                }
+                scm {
+                    connection gitUrl
+                    developerConnection gitUrl
+                    url siteUrl
+
+                }
+            }
+        }
     }
 }
-compileTestKotlin {
-    kotlinOptions {
-        jvmTarget = "1.8"
+
+
+
+//jacoco {
+//    toolVersion = "0.8.1"
+//    reportsDir = file("$buildDir/customJacocoReportDir")
+//}
+
+jacocoTestReport {
+    reports {
+        xml.enabled true
+        csv.enabled false
+        html.enabled false
+        //xml.destination file("${buildDir}/jacocoCoverage")
+    }
+}
+
+version = processorLibraryVersion
+
+task sourcesJarProcessor(type: Jar) {
+    from sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+
+task javadocProcessor(type: Javadoc) {
+    source = sourceSets.main.java.srcDirs
+    classpath = sourceSets.main.runtimeClasspath
+    //classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+
+task javadocJarProcessor(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+artifacts {
+    archives javadocJarProcessor
+    archives sourcesJarProcessor
+}
+
+// Bintray
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+bintray {
+    user = properties.getProperty("bintray.user")
+    key = properties.getProperty("bintray.apikey")
+
+    configurations = ['archives']
+    pkg {
+        repo = bintrayRepo
+        name = bintrayName
+        desc = libraryDescription
+        websiteUrl = siteUrl
+        vcsUrl = gitUrl
+        labels = libLabels
+        issueTrackerUrl = issuesUrl
+        licenses = allLicenses
+        publish = true
+        publicDownloadNumbers = true
+        version {
+            desc = libraryDescription
+            gpg {
+                sign = true //Determines whether to GPG sign the files. The default is false
+                passphrase = properties.getProperty("bintray.gpg.password")
+                //Optional. The passphrase for GPG signing'
+            }
+        }
     }
 }
